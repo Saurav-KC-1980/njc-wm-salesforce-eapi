@@ -1,0 +1,27 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<types:mule xmlns:types="http://www.mulesoft.org/schema/mule/types">
+  <types:catalog>
+    <types:type name="client_type" format="json">
+      <types:shape format="weave" example="examples/client_example-1.json"><![CDATA[%dw 2.0
+
+type client_type = {|
+  client_id: String, 
+  name: String, 
+  first_name: String, 
+  middle_name: String, 
+  last_name: String, 
+  phone: String, 
+  email: String, 
+  shipping_street: String, 
+  shipping_city: String, 
+  shipping_country: String, 
+  shipping_state: String, 
+  shipping_postalcode: String, 
+  annual_income: String, 
+  citizenship: String
+|} {"example": "{\\\"client_id\\\":\\\"\\\",\\\"name\\\":\\\"\\\",\\\"first_name\\\":\\\"\\\",\\\"middle_name\\\":\\\"\\\",\\\"last_name\\\":\\\"\\\",\\\"phone\\\":\\\"\\\",\\\"email\\\":\\\"\\\",\\\"shipping_street\\\":\\\"\\\",\\\"shipping_city\\\":\\\"\\\",\\\"shipping_country\\\":\\\"\\\",\\\"shipping_state\\\":\\\"\\\",\\\"shipping_postalcode\\\":\\\"\\\",\\\"annual_income\\\":\\\"\\\",\\\"citizenship\\\":\\\"\\\"}"}
+
+]]></types:shape>
+    </types:type>
+  </types:catalog>
+</types:mule>

@@ -1,0 +1,17 @@
+{
+"client_id": "",
+"name": "",
+"first_name": "",
+"middle_name": "",
+"last_name": "",
+
+"phone": "" ,
+"email": "",
+"shipping_street": "",
+"shipping_city": "",
+"shipping_country": "",
+"shipping_state": "",
+"shipping_postalcode": "",
+"annual_income":"",
+"citizenship":""
+}

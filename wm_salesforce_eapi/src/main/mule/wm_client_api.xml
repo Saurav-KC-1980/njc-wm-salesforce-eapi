@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd">
+	<salesforce:sfdc-config name="Salesforce_Config" doc:name="Salesforce Config" doc:id="df250887-4335-46fd-a6f7-a19b1998e247" >
+		<salesforce:basic-connection username="njclabswmtest-2dne@force.com" password="njclabs@2018" securityToken="CHc54e2jVmr1DoSjZoEv52WCO" />
+	</salesforce:sfdc-config>
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="f6c8d68b-b428-43b2-bfcd-89a12802ac01" >
+		<http:listener-connection host="0.0.0.0" port="8081" />
+	</http:listener-config>
+	<http:request-config name="HTTP_Request_configuration" doc:name="HTTP Request configuration" doc:id="f46dc519-29fd-4e39-a5ad-01cdb053c57b" >
+		<http:request-connection protocol="HTTPS" host="wma-rds-sapi-m3xvqj.5sc6y6-2.usa-e2.cloudhub.io" />
+	</http:request-config>
+	<http:request-config name="HTTP_Request_configuration1" doc:name="HTTP Request configuration" doc:id="9cb8c939-1841-4ba9-8811-2e4eee54d1d6" >
+		<http:request-connection host="njc-wma-salesforce-sapi.us-e2.cloudhub.io" />
+	</http:request-config>
+	<flow name="wm_syncdataToDb" doc:id="6562e037-c6dc-4a4e-b244-5c19dbaded6a" >
+		<salesforce:subscribe-channel-listener streamingChannel="/event/ClientSync__e" doc:name="Subscribe channel listener" doc:id="ade083d6-8c4f-48f7-94c0-38b8a14b1e35" config-ref="Salesforce_Config"/>
+		<logger level="INFO" doc:name="Logger" doc:id="8cf98e17-52ea-4b11-ae95-98405df11926" />
+		<set-variable value="#[payload[0].payload.AccountId__c]" doc:name="AccountId" doc:id="d1ce9965-718b-44ac-99f3-5222872caddc" variableName="accountId"/>
+		<http:request method="GET" doc:name="Request" doc:id="60327016-b512-407b-b59b-d2b45c46ee91" config-ref="HTTP_Request_configuration1" path="/client/{Id}">
+			<http:uri-params ><![CDATA[#[output application/java
+---
+{
+	"Id": payload[0].payload.AccountId__c
+}]]]></http:uri-params>
+		</http:request>
+		<ee:transform doc:name="Transform Message" doc:id="fd5187b6-a0e3-4323-a681-eb3086bb84b5" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload[0]]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<try doc:name="Try" doc:id="71fbb0b7-ac9b-4ee0-8ebd-27bf6c7d3121" >
+			<http:request method="POST" doc:name="InsertDetailstoDB" doc:id="2e96b946-c20c-4322-a9af-8ad19d73657f" url="http://njc-rds-sapi.us-e2.cloudhub.io/client" target="clientId" targetValue="#[payload.dbClientId]">
+			<http:body><![CDATA[#[{
+"sfClientId": payload.clientDetails.personalDetails.id,
+"name":payload.clientDetails.personalDetails.name,
+"firstName": payload.clientDetails.personalDetails.firstName,
+"middleName": payload.clientDetails.personalDetails.middleName,
+"lastName": payload.clientDetails.personalDetails.lastName
+
+}]]]></http:body>
+		</http:request>
+			<ee:transform doc:name="Transform Message" doc:id="42d04be8-7676-47b8-b22c-48c84651e662" >
+				<ee:message >
+					<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+	---
+	
+[{
+	"Id": vars.accountId,
+    
+    "Account_Added_to_DB__c" : vars.clientId as String default ""
+}]]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+			<http:request method="PUT" doc:name="UpdateSF" doc:id="00d57c7b-c98f-497d-8165-9bd4b20411cc" config-ref="HTTP_Request_configuration1" path="/account/{Id}" >
+				<http:uri-params ><![CDATA[#[output application/java
+---
+{
+	"Id" : vars.accountId
+}]]]></http:uri-params>
+			</http:request>
+			<error-handler >
+				<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="ab61c8c5-8fdd-4845-a170-b8ae981a723d" >
+					<ee:transform doc:name="Transform Message" doc:id="50a13fb4-fffa-419b-822e-432dc1d3bad3" >
+						<ee:message >
+							<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+	---
+	
+[{
+   "Id": vars.accountId,
+    "Account_Added_to_DB__c" : error.description
+}]]]></ee:set-payload>
+						</ee:message>
+					</ee:transform>
+					<http:request method="PUT" doc:name="Request" doc:id="1b526049-57ca-43e8-90b6-90e808851ddc" config-ref="HTTP_Request_configuration1" path="/account/{Id}">
+						<http:uri-params ><![CDATA[#[output application/java
+---
+{
+	"Id" : vars.accountId
+}]]]></http:uri-params>
+					</http:request>
+				</on-error-propagate>
+			</error-handler>
+		</try>
+		<logger level="INFO" doc:name="Logger" doc:id="0462732b-2ca9-45db-8986-ef987c88dc08" />
+	</flow>
+</mule>
